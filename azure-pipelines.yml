@@ -28,7 +28,7 @@ stages:
             goals: 'package'
         - task: PublishBuildArtifacts@1
           inputs:
-            PathtoPublish: '$(System.DefaultWorkingDirectory)/JavaLoginPracticeApp/'
+            PathtoPublish: '$(Build.SourcesDirectory)/target'
             ArtifactName: 'Maven Build Artifact'
             publishLocation: 'Container'
 
