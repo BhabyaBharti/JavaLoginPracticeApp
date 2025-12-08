@@ -68,16 +68,16 @@ stages:
                 java -jar $jarPath -version
                     displayName: Install CheckStyle
 
-                  - task: PowerShell@2
-                    inputs:
-                      targetType: 'inline'
-                      script: |
-                        $jarPath = "$(Agent.TempDirectory)\checkstyle\checkstyle.jar"
-                              $config = "$(System.DefaultWorkingDirectory)\google_checks.xml"
-                              $srcFolder = "$(System.DefaultWorkingDirectory)\src"
-                        
-                              Write-Host "Running Checkstyle..."
-                              java -jar $jarPath -c $config $srcFolder
-                        
-                              Write-Host "Checkstyle completed."
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: |
+              $jarPath = "$(Agent.TempDirectory)\checkstyle\checkstyle.jar"
+                    $config = "$(System.DefaultWorkingDirectory)\google_checks.xml"
+                    $srcFolder = "$(System.DefaultWorkingDirectory)\src"
+              
+                    Write-Host "Running Checkstyle..."
+                    java -jar $jarPath -c $config $srcFolder
+              
+                    Write-Host "Checkstyle completed."
           displayName: Run CheckStyle
