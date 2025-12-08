@@ -49,32 +49,35 @@ stages:
           inputs:
             targetType: 'inline'
             script: |
-              $checkstyleUrl = "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.20.1/checkstyle-10.20.1-all.jar"
-                    $destDir = "$(Agent.TempDirectory)\checkstyle"
-                    $jarPath = "$destDir\checkstyle.jar"
-              
-                    Write-Host "Creating directory $destDir"
-                    New-Item -ItemType Directory -Force -Path $destDir | Out-Null
-              
-                    Write-Host "Downloading Checkstyle..."
-                    Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath
-              
-                    Write-Host "Download complete: $jarPath"
-              
-                    # Print version
-                    java -jar $jarPath -version
-          displayName: Install CheckStyle
+              $workDir = "$env:AGENT_TEMPDIRECTORY/checkstyle"
 
-        - task: PowerShell@2
-          inputs:
-            targetType: 'inline'
-            script: |
-              $jarPath = "$(Agent.TempDirectory)\checkstyle\checkstyle.jar"
-                    $config = "$(System.DefaultWorkingDirectory)\google_checks.xml"
-                    $srcFolder = "$(System.DefaultWorkingDirectory)\src"
-              
-                    Write-Host "Running Checkstyle..."
-                    java -jar $jarPath -c $config $srcFolder
-              
-                    Write-Host "Checkstyle completed."
+                # Create directory
+                Write-Host "Creating directory $workDir"
+                New-Item -ItemType Directory -Force -Path $workDir
+
+                # Download Checkstyle
+                $checkstyleUrl = "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.18.1/checkstyle-10.18.1-all.jar"
+                $jarPath = "$workDir/checkstyle.jar"
+
+                Write-Host "Downloading Checkstyle..."
+                Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath
+                Write-Host "Download complete: $jarPath"
+
+                # Test the JAR
+                Write-Host "Testing CheckStyle jar..."
+                java -jar $jarPath -version
+                    displayName: Install CheckStyle
+
+                  - task: PowerShell@2
+                    inputs:
+                      targetType: 'inline'
+                      script: |
+                        $jarPath = "$(Agent.TempDirectory)\checkstyle\checkstyle.jar"
+                              $config = "$(System.DefaultWorkingDirectory)\google_checks.xml"
+                              $srcFolder = "$(System.DefaultWorkingDirectory)\src"
+                        
+                              Write-Host "Running Checkstyle..."
+                              java -jar $jarPath -c $config $srcFolder
+                        
+                              Write-Host "Checkstyle completed."
           displayName: Run CheckStyle
