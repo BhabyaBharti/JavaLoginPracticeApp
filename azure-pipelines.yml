@@ -15,8 +15,10 @@ stages:
   - stage: Build
     jobs:
       - job: MavenBuild
+        displayName: Maven Build
         steps:
         - task: Maven@3
+          displayName: Maven Build
           inputs:
             mavenPomFile: 'pom.xml'
             mavenOptions: '-Xmx3072m'
@@ -89,9 +91,12 @@ stages:
               $jarPath = "$(Agent.TempDirectory)/checkstyle/checkstyle.jar"
               $config = "$(System.DefaultWorkingDirectory)/google_checks.xml"
               $srcFolder = "$(System.DefaultWorkingDirectory)/src"
-        
+
               Write-Host "Running Checkstyle..."
-              java -jar $jarPath -c $config $srcFolder
-        
+              Write-Host "Jar: $jarPath"
+              Write-Host "Config: $config"
+              Write-Host "Source folder: $srcFolder"
+
+              java -jar $jarPath -c $config -f plain $srcFolder
+
               Write-Host "Checkstyle completed."
-          
