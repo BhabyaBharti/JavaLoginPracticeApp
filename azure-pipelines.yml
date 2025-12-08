@@ -9,8 +9,7 @@ trigger:
       - main
       - feature/Java
 
-pool:
-  vmImage: Terraform-Infra-Agent-Pool
+pool: Azure Pipelines
 
 stages:
   - stage: Build
