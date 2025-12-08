@@ -73,7 +73,7 @@ stages:
           inputs:
             targetType: 'inline'
             script: |
-              $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml"
+              $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/checkstyle-10.18.1/src/main/resources/google_checks.xml"
               $configPath = "$(System.DefaultWorkingDirectory)/google_checks.xml"
 
               Write-Host "Downloading google_checks.xml..."
