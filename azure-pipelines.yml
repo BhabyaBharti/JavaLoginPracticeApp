@@ -35,7 +35,7 @@ stages:
 
   - stage: Linting
     jobs:
-      - job: Linting Java App
+      - job: Linting_Java_App
         steps:
         - task: PowerShell@2
           inputs:
