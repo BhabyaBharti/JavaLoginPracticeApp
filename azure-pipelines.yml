@@ -100,3 +100,27 @@ stages:
               java -jar $jarPath -c $config -f plain $srcFolder
 
               Write-Host "Checkstyle completed."
+
+  - stage: Deploy
+    displayName: DeploytoTomcat
+    jobs:
+      - job: Deploy
+        displayName: Copy War & Restart Tomcat
+        steps:
+        - task: CopyFilesOverSSH@0
+          displayName: Copy Files Over SSH
+          inputs:
+            sshEndpoint: 'sshSC'
+            sourceFolder: '$(Build.ArtifactStagingDirectory)'
+            contents: '**/*.war'
+            targetFolder: '/var/lib/tomcat9/webapps/'
+            readyTimeout: '20000'
+        - task: SSH@0
+          displayName: Restart Tomcat
+          inputs:
+            sshEndpoint: 'sshSC'
+            runOptions: 'inline'
+            inline: |
+              sudo systemctl restart tomcat9
+                            echo "Tomcat restarted successfully."
+            readyTimeout: '20000'
