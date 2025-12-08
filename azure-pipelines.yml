@@ -49,7 +49,7 @@ stages:
           inputs:
             targetType: 'inline'
             script: |
-              $checkstyleUrl = "https://github.com/checkstyle/checkstyle/releases/latest/download/checkstyle-all.jar"
+              $checkstyleUrl = "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.20.1/checkstyle-10.20.1-all.jar"
                     $destDir = "$(Agent.TempDirectory)\checkstyle"
                     $jarPath = "$destDir\checkstyle.jar"
               
