@@ -69,6 +69,19 @@ stages:
           displayName: Install CheckStyle
 
         - task: PowerShell@2
+          displayName: Download Checkstyle Config
+          inputs:
+            targetType: 'inline'
+            script: |
+              $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml"
+              $configPath = "$(System.DefaultWorkingDirectory)/google_checks.xml"
+
+              Write-Host "Downloading google_checks.xml..."
+              Invoke-WebRequest -Uri $configUrl -OutFile $configPath
+
+              Write-Host "Config downloaded to $configPath"
+
+        - task: PowerShell@2
           displayName: Run CheckStyle
           inputs:
             targetType: 'inline'
