@@ -65,7 +65,7 @@ stages:
 
               # Test the JAR
               Write-Host "Testing CheckStyle jar..."
-              java -jar $jarPath -version
+              java -jar $jarPath --version
           displayName: Install CheckStyle
 
         - task: PowerShell@2
