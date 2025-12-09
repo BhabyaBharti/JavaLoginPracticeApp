@@ -149,7 +149,7 @@ stages:
           displayName: Copy Files Over SSH
           inputs:
             sshEndpoint: 'sshSC'
-            sourceFolder: '$(Pipeline.Workspace)/Maven Build Artifact'
+            sourceFolder: '$(Pipeline.Workspace)/MavenBuildArtifact'
             contents: '**/*.war'
             targetFolder: '/var/lib/tomcat10/webapps/'
             readyTimeout: '20000'
