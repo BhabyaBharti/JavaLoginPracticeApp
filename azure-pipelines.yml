@@ -35,71 +35,55 @@ stages:
             publishLocation: 'Container'
 
   - stage: Linting
+
     jobs:
+
       - job: Linting_Java_App
         steps:
         - task: PowerShell@2
+          displayName: Install & Run Checkstyle
           inputs:
             targetType: 'inline'
             script: |
-              Write-Host " JAVA_HOME = $env:JAVA_HOME "
-              Write-Host " Java version from agent context: "
+              Write-Host "=== VALIDATE JAVA INSTALLATION ==="
+              if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
+                  Write-Error "Java is NOT installed. Please install Java on the agent."
+                  exit 1
+              }
+        
+              Write-Host "JAVA_HOME = $env:JAVA_HOME"
               java -version
-          displayName: Validate Java Installed
-
-        - task: PowerShell@2
-          inputs:
-            targetType: 'inline'
-            script: |
+        
+              Write-Host "`n=== INSTALLING CHECKSTYLE ==="
               $workDir = "$env:AGENT_TEMPDIRECTORY/checkstyle"
-
-              # Create directory
-              Write-Host "Creating directory $workDir"
               New-Item -ItemType Directory -Force -Path $workDir | Out-Null
-
-              # Download Checkstyle
+        
               $checkstyleUrl = "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.18.1/checkstyle-10.18.1-all.jar"
               $jarPath = "$workDir/checkstyle.jar"
-
-              Write-Host "Downloading Checkstyle..."
+        
+              Write-Host "Downloading Checkstyle JAR..."
               Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath
-              Write-Host "Download complete: $jarPath"
-
-              # Test the JAR
-              Write-Host "Testing CheckStyle jar..."
+              Write-Host "Checkstyle JAR downloaded: $jarPath"
+        
+              Write-Host "`nTesting Checkstyle..."
               java -jar $jarPath --version
-          displayName: Install CheckStyle
-
-        - task: PowerShell@2
-          displayName: Download Checkstyle Config
-          inputs:
-            targetType: 'inline'
-            script: |
+        
+              Write-Host "`n=== DOWNLOADING CHECKSTYLE CONFIG (google_checks.xml) ==="
               $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/checkstyle-10.18.1/src/main/resources/google_checks.xml"
               $configPath = "$(System.DefaultWorkingDirectory)/google_checks.xml"
-
-              Write-Host "Downloading google_checks.xml..."
+        
               Invoke-WebRequest -Uri $configUrl -OutFile $configPath
-
-              Write-Host "Config downloaded to $configPath"
-
-        - task: PowerShell@2
-          displayName: Run CheckStyle
-          inputs:
-            targetType: 'inline'
-            script: |
-              $jarPath = "$(Agent.TempDirectory)/checkstyle/checkstyle.jar"
-              $config = "$(System.DefaultWorkingDirectory)/google_checks.xml"
+              Write-Host "Config downloaded at: $configPath"
+        
+              Write-Host "`n=== RUNNING CHECKSTYLE ==="
               $srcFolder = "$(System.DefaultWorkingDirectory)/src"
-
-              Write-Host "Running Checkstyle..."
-              Write-Host "Jar: $jarPath"
-              Write-Host "Config: $config"
-              Write-Host "Source folder: $srcFolder"
-
-              java -jar $jarPath -c $config -f plain $srcFolder
-
-              Write-Host "Checkstyle completed."
+        
+              Write-Host "Source Folder: $srcFolder"
+              Write-Host "Running Checkstyle audit..."
+        
+              java -jar $jarPath -c $configPath -f plain $srcFolder
+        
+              Write-Host "`n=== CHECKSTYLE COMPLETED ==="
 
   - stage: Deploy
     displayName: DeploytoTomcat
@@ -107,13 +91,20 @@ stages:
       - job: Deploy
         displayName: Copy War & Restart Tomcat
         steps:
+        - task: ArchiveFiles@2
+          inputs:
+            rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+            includeRootFolder: false
+            archiveType: 'zip'
+            archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+            replaceExistingArchive: true
         - task: CopyFilesOverSSH@0
           displayName: Copy Files Over SSH
           inputs:
             sshEndpoint: 'sshSC'
             sourceFolder: '$(Build.ArtifactStagingDirectory)'
-            contents: '**/*.war'
-            targetFolder: '/var/lib/tomcat9/webapps/'
+            contents: 'app.zip'
+            targetFolder: '/var/lib/tomcat10/webapps/'
             readyTimeout: '20000'
         - task: SSH@0
           displayName: Restart Tomcat
@@ -121,6 +112,6 @@ stages:
             sshEndpoint: 'sshSC'
             runOptions: 'inline'
             inline: |
-              sudo systemctl restart tomcat9
+              sudo systemctl restart tomcat10
                             echo "Tomcat restarted successfully."
             readyTimeout: '20000'
