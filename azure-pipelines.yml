@@ -91,6 +91,14 @@ stages:
       - job: Deploy
         displayName: Copy War & Restart Tomcat
         steps:
+        - task: DownloadBuildArtifacts@1
+          displayName: Get the Artifacts
+          inputs:
+            buildType: 'current'
+            downloadType: 'single'
+            artifactName: 'Maven Build Artifact'
+            itemPattern: 
+            downloadPath: '$(Pipeline.Workspace)'
         - task: ArchiveFiles@2
           inputs:
             rootFolderOrFile: '$(Pipeline.Workspace)/Maven Build Artifact'
