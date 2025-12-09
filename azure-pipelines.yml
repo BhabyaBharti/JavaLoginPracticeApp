@@ -39,16 +39,10 @@ stages:
         - task: PublishBuildArtifacts@1
           displayName: Publish Build Artifacts
           inputs:
-            PathtoPublish: '$(Build.SourcesDirectory)/target/*.war'
+            PathtoPublish: '$(Build.SourcesDirectory)/target'
             ArtifactName: 'MavenBuildArtifact'
             publishLocation: 'Container'
-        - task: PublishBuildArtifacts@1
-          displayName: Publish Archive
-          inputs:
-            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-            ArtifactName: 'drop'
-            publishLocation: 'Container'
-
+            
   - stage: Linting
 
     jobs:
