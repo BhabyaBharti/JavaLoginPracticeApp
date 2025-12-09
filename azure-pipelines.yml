@@ -28,10 +28,25 @@ stages:
             publishJUnitResults: true
             testResultsFiles: '**/surefire-reports/TEST-*.xml'
             goals: 'package'
-        - task: PublishBuildArtifacts@1
+        - task: ArchiveFiles@2
+          displayName: Archive the Artifacts
           inputs:
-            PathtoPublish: '$(Build.SourcesDirectory)/target'
-            ArtifactName: 'Maven Build Artifact'
+            rootFolderOrFile: '$(Build.SourcesDirectory)/target'
+            includeRootFolder: false
+            archiveType: 'zip'
+            archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+            replaceExistingArchive: true
+        - task: PublishBuildArtifacts@1
+          displayName: Publish Build Artifacts
+          inputs:
+            PathtoPublish: '$(Build.SourcesDirectory)/target/*.war'
+            ArtifactName: 'MavenBuildArtifact'
+            publishLocation: 'Container'
+        - task: PublishBuildArtifacts@1
+          displayName: Publish Archive
+          inputs:
+            PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+            ArtifactName: 'drop'
             publishLocation: 'Container'
 
   - stage: Linting
@@ -96,7 +111,7 @@ stages:
           inputs:
             buildType: 'current'
             downloadType: 'single'
-            artifactName: 'Maven Build Artifact'
+            artifactName: 'MavenBuildArtifact'
             itemPattern: 
             downloadPath: '$(Pipeline.Workspace)'
         - task: ArchiveFiles@2
