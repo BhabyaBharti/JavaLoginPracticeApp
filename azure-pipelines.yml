@@ -151,7 +151,7 @@ stages:
             sshEndpoint: 'sshSC'
             sourceFolder: '$(Pipeline.Workspace)/MavenBuildArtifact'
             contents: '**/*.war'
-            targetFolder: '/var/lib/tomcat10/webapps/'
+            targetFolder: '/home/vmuseri23579/tomcat-deploy'
             readyTimeout: '20000'
         - task: SSH@0
           displayName: Restart Tomcat
