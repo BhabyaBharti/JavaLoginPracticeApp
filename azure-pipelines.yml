@@ -160,5 +160,5 @@ stages:
             runOptions: 'inline'
             inline: |
               sudo systemctl restart tomcat
-                            echo "Tomcat restarted successfully."
+              echo "Tomcat restarted successfully."
             readyTimeout: '20000'
