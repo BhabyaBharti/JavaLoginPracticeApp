@@ -56,7 +56,7 @@ stages:
             script: |
               Write-Host "=== VALIDATE JAVA INSTALLATION ==="
               if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
-                  Write-Error "Java is NOT installed. Please install Java on the agent."
+                  Write-Error "Java is NOT installed on the agent."
                   exit 1
               }
 
@@ -71,34 +71,30 @@ stages:
               $jarPath = "$workDir/checkstyle.jar"
 
               Write-Host "Downloading Checkstyle JAR..."
-              Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath -SkipCertificateCheck
+              Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath -SkipCertificateCheck -UseBasicParsing -SslProtocol Tls12
               Write-Host "Checkstyle JAR downloaded: $jarPath"
 
               Write-Host "`nTesting Checkstyle..."
               java -jar $jarPath --version
 
-              Write-Host "`n=== DOWNLOADING CHECKSTYLE CONFIG (google_checks.xml) ==="
+              Write-Host "`n=== DOWNLOADING CHECKSTYLE CONFIG ==="
               $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/checkstyle-10.18.1/src/main/resources/google_checks.xml"
               $configPath = "$(System.DefaultWorkingDirectory)/google_checks.xml"
 
-              Invoke-WebRequest -Uri $configUrl -OutFile $configPath -SkipCertificateCheck
+              Invoke-WebRequest -Uri $configUrl -OutFile $configPath -SkipCertificateCheck -UseBasicParsing -SslProtocol Tls12
               Write-Host "Config downloaded at: $configPath"
 
               Write-Host "`n=== RUNNING CHECKSTYLE ==="
+
               $srcFolder = "$(System.DefaultWorkingDirectory)/src/main/java"
+              Write-Host "Source folder: $srcFolder"
+              Write-Host "Running audit..."
 
-              if (!(Test-Path $srcFolder)) {
-                  Write-Host "Source folder not found: $srcFolder"
-                  $srcFolder = "$(System.DefaultWorkingDirectory)/src"
-              }
-
-              Write-Host "Source Folder: $srcFolder"
-              Write-Host "Running Checkstyle audit..."
-
-              # Run Checkstyle in ONE LINE (Linux pwsh doesn't allow backticks)
               java -jar $jarPath -c $configPath -f plain $srcFolder
 
               Write-Host "`n=== CHECKSTYLE COMPLETED ==="
+
+
 
         - task: PowerShell@2
           displayName: Install and Run StyleLint
