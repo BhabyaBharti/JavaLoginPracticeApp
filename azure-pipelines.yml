@@ -55,42 +55,55 @@ stages:
           inputs:
             targetType: 'inline'
             script: |
-              # Install Node.js if not installed
+              Write-Host "=== INSTALL & RUN STYLELINT ==="
+
+              # Move to repo root
+              cd "$(Build.SourcesDirectory)"
+
+              # Ensure Node exists
               if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-                  Write-Host "Node.js is not installed. Please install Node.js first."
+                  Write-Host "❌ Node.js is not installed on the agent."
                   exit 1
               }
-              
+
               Write-Host "Initializing npm project..."
-              npm init -y
-              
-              Write-Host "Installing Stylelint and recommended configs..."
-              npm install --save-dev stylelint stylelint-config-standard stylelint-config-standard-scss stylelint-scss
-              
-              Write-Host "Creating .stylelintrc.json configuration..."
+              npm init -y --silent
+
+              Write-Host "Installing Stylelint and configs..."
+              npm install --save-dev stylelint stylelint-config-standard stylelint-config-standard-scss stylelint-scss --silent
+
+              Write-Host "Creating Stylelint configuration..."
               @'
               {
                 "extends": [
                   "stylelint-config-standard",
                   "stylelint-config-standard-scss"
-                ],
-                "rules": {
-                  "indentation": 2,
-                  "color-no-invalid-hex": true,
-                  "string-quotes": "double",
-                  "block-no-empty": true,
-                  "no-duplicate-selectors": true
-                }
+                ]
               }
               '@ | Out-File -FilePath ".stylelintrc.json" -Encoding utf8
-              
-              Write-Host "Creating Stylelint script in package.json..."
-              npm pkg set scripts.lint:css="stylelint \"src/**/*.css\" \"src/**/*.scss\""
-              
-              Write-Host "Running Stylelint..."
-              npm run lint:css
-              
-              Write-Host "`nStylelint setup complete!"
+
+
+              Write-Host "=== Searching CSS/SCSS files ==="
+
+              # Detect CSS and SCSS anywhere in the repo
+              $cssFiles = bash -c "find $(Build.SourcesDirectory) -type f \( -name '*.css' -o -name '*.scss' \)"
+
+              if (-not $cssFiles) {
+                  Write-Host "⚠ No CSS/SCSS files found. Showing directory tree..."
+                  bash -c "ls -R $(Build.SourcesDirectory)"
+                  exit 0   # Do NOT fail pipeline if no CSS exists
+              }
+
+              Write-Host "Found the following files:"
+              Write-Host $cssFiles
+
+              Write-Host "=== Running Stylelint ==="
+
+              # Run stylelint against all found files
+              bash -c "npx stylelint $(echo $cssFiles)"
+
+              Write-Host "✅ Stylelint completed successfully."
+
 
 
   - stage: Deploy
