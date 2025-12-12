@@ -100,7 +100,47 @@ stages:
 
               Write-Host "`n=== CHECKSTYLE COMPLETED ==="
 
-
+        - task: PowerShell@2
+          displayName: Install and Run StyleLint
+          inputs:
+            targetType: 'inline'
+            script: |
+              # Install Node.js if not installed
+              if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+                  Write-Host "Node.js is not installed. Please install Node.js first."
+                  exit 1
+              }
+              
+              Write-Host "Initializing npm project..."
+              npm init -y
+              
+              Write-Host "Installing Stylelint and recommended configs..."
+              npm install --save-dev stylelint stylelint-config-standard stylelint-config-standard-scss stylelint-scss
+              
+              Write-Host "Creating .stylelintrc.json configuration..."
+              @'
+              {
+                "extends": [
+                  "stylelint-config-standard",
+                  "stylelint-config-standard-scss"
+                ],
+                "rules": {
+                  "indentation": 2,
+                  "color-no-invalid-hex": true,
+                  "string-quotes": "double",
+                  "block-no-empty": true,
+                  "no-duplicate-selectors": true
+                }
+              }
+              '@ | Out-File -FilePath ".stylelintrc.json" -Encoding utf8
+              
+              Write-Host "Creating Stylelint script in package.json..."
+              npm pkg set scripts.lint:css="stylelint \"src/**/*.css\" \"src/**/*.scss\""
+              
+              Write-Host "Running Stylelint..."
+              npm run lint:css
+              
+              Write-Host "`nStylelint setup complete!"
 
 
   - stage: Deploy
