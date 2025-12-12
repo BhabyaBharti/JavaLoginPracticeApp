@@ -71,7 +71,7 @@ stages:
               $jarPath = "$workDir/checkstyle.jar"
 
               Write-Host "Downloading Checkstyle JAR..."
-              Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath
+              Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath -SkipCertificateCheck
               Write-Host "Checkstyle JAR downloaded: $jarPath"
 
               Write-Host "`nTesting Checkstyle..."
@@ -81,7 +81,7 @@ stages:
               $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/checkstyle-10.18.1/src/main/resources/google_checks.xml"
               $configPath = "$(System.DefaultWorkingDirectory)/google_checks.xml"
 
-              Invoke-WebRequest -Uri $configUrl -OutFile $configPath
+              Invoke-WebRequest -Uri $configUrl -OutFile $configPath -SkipCertificateCheck
               Write-Host "Config downloaded at: $configPath"
 
               Write-Host "`n=== RUNNING CHECKSTYLE ==="
@@ -89,17 +89,17 @@ stages:
 
               if (!(Test-Path $srcFolder)) {
                   Write-Host "Source folder not found: $srcFolder"
-                  Write-Host "Trying fallback: $(System.DefaultWorkingDirectory)/src"
                   $srcFolder = "$(System.DefaultWorkingDirectory)/src"
               }
 
               Write-Host "Source Folder: $srcFolder"
               Write-Host "Running Checkstyle audit..."
 
-              # FIX: Azure DevOps pwsh DOES NOT support backticks — use a single-line command
+              # Run Checkstyle in ONE LINE (Linux pwsh doesn't allow backticks)
               java -jar $jarPath -c $configPath -f plain $srcFolder
 
               Write-Host "`n=== CHECKSTYLE COMPLETED ==="
+
 
 
 
