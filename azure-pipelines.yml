@@ -54,45 +54,26 @@ stages:
           inputs:
             targetType: 'inline'
             script: |
-              Write-Host "=== VALIDATE JAVA INSTALLATION ==="
-              if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
-                  Write-Error "Java is NOT installed on the agent."
+              Write-Host "=== RUNNING CHECKSTYLE ==="
+
+              $sourceFolder = "$(System.DefaultWorkingDirectory)/s/src"
+              Write-Host "Searching Java files in: $sourceFolder"
+
+              # Find all Java files
+              $javaFiles = bash -c "find $sourceFolder -type f -name '*.java'"
+              if (-not $javaFiles) {
+                  Write-Host "❌ No Java files found in $sourceFolder"
                   exit 1
               }
 
-              Write-Host "JAVA_HOME = $env:JAVA_HOME"
-              java -version
+              Write-Host "Java files found:"
+              Write-Host $javaFiles
 
-              Write-Host "`n=== INSTALLING CHECKSTYLE ==="
-              $workDir = "$env:AGENT_TEMPDIRECTORY/checkstyle"
-              New-Item -ItemType Directory -Force -Path $workDir | Out-Null
+              Write-Host "Running Checkstyle..."
+              bash -c "java -jar /home/vsts/work/_temp/checkstyle/checkstyle.jar \
+                  -c /home/vsts/work/1/s/google_checks.xml \
+                  $javaFiles"
 
-              $checkstyleUrl = "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-10.18.1/checkstyle-10.18.1-all.jar"
-              $jarPath = "$workDir/checkstyle.jar"
-
-              Write-Host "Downloading Checkstyle JAR..."
-              Invoke-WebRequest -Uri $checkstyleUrl -OutFile $jarPath -SkipCertificateCheck -UseBasicParsing -SslProtocol Tls12
-              Write-Host "Checkstyle JAR downloaded: $jarPath"
-
-              Write-Host "`nTesting Checkstyle..."
-              java -jar $jarPath --version
-
-              Write-Host "`n=== DOWNLOADING CHECKSTYLE CONFIG ==="
-              $configUrl = "https://raw.githubusercontent.com/checkstyle/checkstyle/checkstyle-10.18.1/src/main/resources/google_checks.xml"
-              $configPath = "$(System.DefaultWorkingDirectory)/google_checks.xml"
-
-              Invoke-WebRequest -Uri $configUrl -OutFile $configPath -SkipCertificateCheck -UseBasicParsing -SslProtocol Tls12
-              Write-Host "Config downloaded at: $configPath"
-
-              Write-Host "`n=== RUNNING CHECKSTYLE ==="
-
-              $srcFolder = "$(System.DefaultWorkingDirectory)/src/main/java"
-              Write-Host "Source folder: $srcFolder"
-              Write-Host "Running audit..."
-
-              java -jar $jarPath -c $configPath -f plain $srcFolder
-
-              Write-Host "`n=== CHECKSTYLE COMPLETED ==="
 
 
 
