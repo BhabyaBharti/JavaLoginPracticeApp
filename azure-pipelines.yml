@@ -88,20 +88,19 @@ stages:
               $srcFolder = "$(System.DefaultWorkingDirectory)/src/main/java"
 
               if (!(Test-Path $srcFolder)) {
-                  Write-Host "Source folder $srcFolder not found. Falling back to $(System.DefaultWorkingDirectory)/src"
+                  Write-Host "Source folder not found: $srcFolder"
+                  Write-Host "Trying fallback: $(System.DefaultWorkingDirectory)/src"
                   $srcFolder = "$(System.DefaultWorkingDirectory)/src"
               }
 
               Write-Host "Source Folder: $srcFolder"
               Write-Host "Running Checkstyle audit..."
 
-              # Use downloaded JAR, config, and correct source folder
-              java -jar $jarPath `
-                  -c $configPath `
-                  -f plain `
-                  $srcFolder
+              # FIX: Azure DevOps pwsh DOES NOT support backticks — use a single-line command
+              java -jar $jarPath -c $configPath -f plain $srcFolder
 
               Write-Host "`n=== CHECKSTYLE COMPLETED ==="
+
 
 
   - stage: Deploy
