@@ -86,11 +86,14 @@ stages:
         
               Write-Host "`n=== RUNNING CHECKSTYLE ==="
               $srcFolder = "$(System.DefaultWorkingDirectory)/src"
-        
+
               Write-Host "Source Folder: $srcFolder"
               Write-Host "Running Checkstyle audit..."
         
-              java -jar $jarPath -c $configPath -f plain $srcFolder
+              java -jar /home/vsts/work/_temp/checkstyle/checkstyle.jar `
+              -c /home/vsts/work/1/s/google_checks.xml `
+              -f plain `
+              /home/vsts/work/1/s/src/main/java
         
               Write-Host "`n=== CHECKSTYLE COMPLETED ==="
 
