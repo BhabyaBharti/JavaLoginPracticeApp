@@ -56,7 +56,7 @@ stages:
             script: |
               Write-Host "=== RUNNING CHECKSTYLE ==="
 
-              $sourceFolder = "$(System.DefaultWorkingDirectory)/s/src"
+              $sourceFolder = "$(Build.SourcesDirectory)/src"
               Write-Host "Searching Java files in: $sourceFolder"
 
               # Find all Java files
@@ -71,11 +71,8 @@ stages:
 
               Write-Host "Running Checkstyle..."
               bash -c "java -jar /home/vsts/work/_temp/checkstyle/checkstyle.jar \
-                  -c /home/vsts/work/1/s/google_checks.xml \
+                  -c $(Build.SourcesDirectory)/google_checks.xml \
                   $javaFiles"
-
-
-
 
         - task: PowerShell@2
           displayName: Install and Run StyleLint
