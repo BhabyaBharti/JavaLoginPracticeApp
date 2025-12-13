@@ -27,6 +27,8 @@ stages:
             cliProjectKey: 'BhabyaBharti_JavaLoginPracticeApp'
             cliProjectName: 'JavaLoginPracticeApp'
             cliSources: '.'
+            extraProperties: |
+              sonar.organization=bhabyabharti
 
         
 
