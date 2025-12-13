@@ -51,14 +51,12 @@ stages:
             mavenVersionOption: 'Default'
             mavenAuthenticateFeed: false
             effectivePomSkip: false
-            #sonarQubeRunAnalysis: false  # Set to false since we're handling it separately
-        #- task: SonarQubeAnalyze@8
 
         - task: Maven@4
           inputs:
             mavenPomFile: 'pom.xml'
             goals: 'sonar:sonar'
-            options: 'options: ''-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="$(SONAR_TOKEN)" -Dsonar.tests= -Dsonar.test.exclusions=**/*'''
+            options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="$(SONAR_TOKEN)" -Dsonar.tests= -Dsonar.test.exclusions=**/*'''
             #publishJUnitResults: true
             #testResultsFiles: '**/surefire-reports/TEST-*.xml'
             javaHomeOption: 'JDKVersion'
