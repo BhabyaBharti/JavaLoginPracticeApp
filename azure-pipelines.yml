@@ -19,6 +19,7 @@ stages:
         steps:
 
         - task: SonarQubePrepare@8
+          displayName: Prepare SonarQube Analysis
           inputs:
             SonarQube: 'SonarCloud-SC'
             scannerMode: 'cli'
