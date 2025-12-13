@@ -51,7 +51,7 @@ stages:
             mavenAuthenticateFeed: false
             effectivePomSkip: false
             sonarQubeRunAnalysis: false  # Set to false since we're handling it separately
-        - task: SonarQubeAnalyze@8
+        #- task: SonarQubeAnalyze@8
         
         - task: SonarQubePublish@8
           displayName: Publish Quality Gate Result
