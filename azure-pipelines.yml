@@ -22,8 +22,11 @@ stages:
           inputs:
             SonarQube: 'SonarCloud-SC'
             scannerMode: 'other'
+            projectKey: 'bhabyabharti_javaloginshowcase'
+            projectName: 'JavaLoginShowCase'
             extraProperties: |
-                sonar.organization=BhabyaBharti
+                sonar.organization=bhabyabharti
+                sonar.branch.name=main
 
         - task: Maven@4
           displayName: mvn build + SonarQube Analysis
