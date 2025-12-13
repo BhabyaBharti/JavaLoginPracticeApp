@@ -19,12 +19,10 @@ stages:
         steps:
 
         - task: SonarQubePrepare@8
-          displayName: Prepare SonarQube Analysis
           inputs:
-            SonarQube: 'SonarQube-Service-Connection'
-            scannerMode: 'Maven'
-            projectKey: 'javaloginpracticeapp'
-            projectName: 'Java Login Practice App'
+            SonarQube: 'SonarCloud-SC'
+            scannerMode: 'other'
+
         - task: Maven@4
           displayName: mvn build + SonarQube Analysis
           inputs:
@@ -38,7 +36,6 @@ stages:
             effectivePomSkip: false
             sonarQubeRunAnalysis: true
             sqMavenPluginVersionChoice: 'pom'
-            goals: 'clean verify'
         
         - task: SonarQubePublish@8
           displayName: Publish Quality Gate Result
