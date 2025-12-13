@@ -29,6 +29,11 @@ stages:
             cliSources: '.'
             extraProperties: |
               sonar.organization=bhabyabharti
+              sonar.java.binaries=target/classes
+              sonar.java.libraries=target/**/*.jar
+              sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+              sonar.tests=src/test
+              sonar.test.inclusions=src/test/**/*
 
         
 
@@ -36,10 +41,16 @@ stages:
           displayName: mvn build
           inputs:
             mavenPomFile: 'pom.xml'
-            goals: 'clean verify'
+            goals: 'clean verify sonar:sonar'
             publishJUnitResults: true
             testResultsFiles: '**/surefire-reports/TEST-*.xml'
-
+            options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="6d738a0fb7e64392588deda6688aefc897c22844"'
+            javaHomeOption: 'JDKVersion'
+            jdkVersionOption: '1.17'
+            mavenVersionOption: 'Default'
+            mavenAuthenticateFeed: false
+            effectivePomSkip: false
+            sonarQubeRunAnalysis: false  # Set to false since we're handling it separately
         - task: SonarQubeAnalyze@8
         
         - task: SonarQubePublish@8
