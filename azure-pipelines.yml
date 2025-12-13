@@ -29,11 +29,12 @@ stages:
             cliSources: '.'
             extraProperties: |
               sonar.organization=bhabyabharti
+              sonar.sources=src/main/java,src/main/webapp
               sonar.java.binaries=target/classes
               sonar.java.libraries=target/**/*.jar
-              sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-              sonar.tests=src/test
-              sonar.test.inclusions=src/test/**/*
+              sonar.tests=
+              sonar.test.exclusions=**/*
+              sonar.coverage.exclusions=**/*
 
         
 
@@ -41,17 +42,30 @@ stages:
           displayName: mvn build
           inputs:
             mavenPomFile: 'pom.xml'
-            goals: 'clean verify sonar:sonar'
-            publishJUnitResults: true
-            testResultsFiles: '**/surefire-reports/TEST-*.xml'
-            options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="6d738a0fb7e64392588deda6688aefc897c22844"'
+            goals: 'clean package'
+            #publishJUnitResults: true
+            #testResultsFiles: '**/surefire-reports/TEST-*.xml'
+            #options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="6d738a0fb7e64392588deda6688aefc897c22844"'
             javaHomeOption: 'JDKVersion'
             jdkVersionOption: '1.17'
             mavenVersionOption: 'Default'
             mavenAuthenticateFeed: false
             effectivePomSkip: false
-            sonarQubeRunAnalysis: false  # Set to false since we're handling it separately
+            #sonarQubeRunAnalysis: false  # Set to false since we're handling it separately
         #- task: SonarQubeAnalyze@8
+
+        - task: Maven@4
+          inputs:
+            mavenPomFile: 'pom.xml'
+            goals: 'sonar:sonar'
+            options: 'options: ''-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="$(SONAR_TOKEN)" -Dsonar.tests= -Dsonar.test.exclusions=**/*'''
+            #publishJUnitResults: true
+            #testResultsFiles: '**/surefire-reports/TEST-*.xml'
+            javaHomeOption: 'JDKVersion'
+            mavenVersionOption: 'Default'
+            mavenAuthenticateFeed: false
+            effectivePomSkip: false
+            sonarQubeRunAnalysis: false
         
         - task: SonarQubePublish@8
           displayName: Publish Quality Gate Result
