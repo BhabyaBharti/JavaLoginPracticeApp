@@ -21,15 +21,11 @@ stages:
         - task: SonarQubePrepare@8
           inputs:
             SonarQube: 'SonarCloud-SC'
-            scannerMode: 'CLI'
+            scannerMode: 'cli'
             configMode: 'manual'
-            cliProjectKey: 'bhabyabharti_javaloginshowcase'
-            cliProjectName: 'JavaLoginShowCase'
-            cliSources: 'src'
-            extraProperties: |
-                sonar.organization=bhabyabharti
-                sonar.branch.name=main
-                sonar.java.binaries=target/classes
+            cliProjectKey: 'BhabyaBharti_JavaLoginPracticeApp'
+            cliProjectName: 'JavaLoginPracticeApp'
+            cliSources: '.'
 
         - task: Maven@4
           displayName: mvn build
