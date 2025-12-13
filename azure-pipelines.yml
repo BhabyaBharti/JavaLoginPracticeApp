@@ -29,42 +29,30 @@ stages:
             cliSources: '.'
             extraProperties: |
               sonar.organization=bhabyabharti
-              sonar.sources=src/main/webapp
-              sonar.java.binaries=target/classes
-              sonar.java.libraries=target/**/*.jar
+              sonar.ci.autoconfig.disabled=true
+              # Skip test analysis
               sonar.tests=
               sonar.test.exclusions=**/*
-              sonar.coverage.exclusions=**/*
+              # Use CI mode
+              sonar.scm.provider=git
 
         
 
         - task: Maven@4
-          displayName: mvn build
+          displayName: mvn build & Run Sonar Analysis
           inputs:
             mavenPomFile: 'pom.xml'
-            goals: 'clean package'
-            #publishJUnitResults: true
-            #testResultsFiles: '**/surefire-reports/TEST-*.xml'
-            #options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="6d738a0fb7e64392588deda6688aefc897c22844"'
+            goals: 'clean verify sonar:sonar'
+            options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="$(SONAR_TOKEN)" -Dsonar.organization=bhabyabharti -Dsonar.projectKey=BhabyaBharti_JavaLoginPracticeApp'
+            
             javaHomeOption: 'JDKVersion'
             jdkVersionOption: '1.17'
             mavenVersionOption: 'Default'
             mavenAuthenticateFeed: false
             effectivePomSkip: false
-
-        - task: Maven@4
-          displayName: Run SonarQube Analysis
-          inputs:
-            mavenPomFile: 'pom.xml'
-            goals: 'sonar:sonar'
-            options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="6d738a0fb7e64392588deda6688aefc897c22844"'
-            #publishJUnitResults: true
-            #testResultsFiles: '**/surefire-reports/TEST-*.xml'
-            javaHomeOption: 'JDKVersion'
-            mavenVersionOption: 'Default'
-            mavenAuthenticateFeed: false
-            effectivePomSkip: false
             sonarQubeRunAnalysis: false
+            publishJUnitResults: false
+
         
         - task: SonarQubePublish@8
           displayName: Publish Quality Gate Result
