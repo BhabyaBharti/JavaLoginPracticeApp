@@ -28,6 +28,8 @@ stages:
             cliProjectName: 'JavaLoginPracticeApp'
             cliSources: '.'
 
+        
+
         - task: Maven@4
           displayName: mvn build
           inputs:
