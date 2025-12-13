@@ -21,26 +21,25 @@ stages:
         - task: SonarQubePrepare@8
           inputs:
             SonarQube: 'SonarCloud-SC'
-            scannerMode: 'other'
-            projectKey: 'bhabyabharti_javaloginshowcase'
-            projectName: 'JavaLoginShowCase'
+            scannerMode: 'CLI'
+            configMode: 'manual'
+            cliProjectKey: 'bhabyabharti_javaloginshowcase'
+            cliProjectName: 'JavaLoginShowCase'
+            cliSources: 'src'
             extraProperties: |
                 sonar.organization=bhabyabharti
                 sonar.branch.name=main
+                sonar.java.binaries=target/classes
 
         - task: Maven@4
-          displayName: mvn build + SonarQube Analysis
+          displayName: mvn build
           inputs:
-            azureSubscription: 'WIF'
             mavenPomFile: 'pom.xml'
+            goals: 'clean verify'
             publishJUnitResults: true
             testResultsFiles: '**/surefire-reports/TEST-*.xml'
-            javaHomeOption: 'JDKVersion'
-            mavenVersionOption: 'Default'
-            mavenAuthenticateFeed: false
-            effectivePomSkip: false
-            sonarQubeRunAnalysis: true
-            sqMavenPluginVersionChoice: 'pom'
+
+        - task: SonarQubeAnalyze@8
         
         - task: SonarQubePublish@8
           displayName: Publish Quality Gate Result
