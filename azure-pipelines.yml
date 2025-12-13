@@ -17,17 +17,30 @@ stages:
       - job: MavenBuild
         displayName: Maven Build
         steps:
-        - task: Maven@3
-          displayName: Maven Build
+
+        - task: SonarQubePrepare@8
+          displayName: Prepare SonarQube Analysis
           inputs:
+            SonarQube: 'SonarQube-Service-Connection'
+            scannerMode: 'other'
+        - task: Maven@4
+          displayName: mvn build + SonarQube Analysis
+          inputs:
+            azureSubscription: 'WIF'
             mavenPomFile: 'pom.xml'
-            mavenOptions: '-Xmx3072m'
-            javaHomeOption: 'JDKVersion'
-            jdkVersionOption: '1.11'
-            jdkArchitectureOption: 'x64'
             publishJUnitResults: true
             testResultsFiles: '**/surefire-reports/TEST-*.xml'
-            goals: 'package'
+            javaHomeOption: 'JDKVersion'
+            mavenVersionOption: 'Default'
+            mavenAuthenticateFeed: false
+            effectivePomSkip: false
+            sonarQubeRunAnalysis: true
+            sqMavenPluginVersionChoice: 'pom'
+        
+        - task: SonarQubePublish@8
+          displayName: Publish Quality Gate Result
+          inputs:
+            pollingTimeoutSec: '300'
         - task: ArchiveFiles@2
           displayName: Archive the Artifacts
           inputs:
@@ -42,8 +55,12 @@ stages:
             PathtoPublish: '$(Build.SourcesDirectory)/target'
             ArtifactName: 'MavenBuildArtifact'
             publishLocation: 'Container'
-            
+
+
+
   - stage: Linting
+    displayName: Lint Java App
+    dependsOn: Build
 
     jobs:
 
@@ -79,9 +96,9 @@ stages:
 
 
 
-
-  - stage: Deploy
+  - stage: DeployToDev
     displayName: DeploytoTomcat
+    dependsOn: Build
     jobs:
       - job: Deploy
         displayName: Copy War & Restart Tomcat
