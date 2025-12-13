@@ -22,6 +22,8 @@ stages:
           inputs:
             SonarQube: 'SonarCloud-SC'
             scannerMode: 'other'
+            extraProperties: |
+                sonar.organization=BhabyaBharti
 
         - task: Maven@4
           displayName: mvn build + SonarQube Analysis
