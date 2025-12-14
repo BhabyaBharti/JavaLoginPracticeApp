@@ -105,72 +105,72 @@ stages:
 
 
 
-  # - stage: DeployToDev
-  #   displayName: DeploytoTomcat
-  #   dependsOn: Build
-  #   jobs:
-  #     - job: Deploy
-  #       displayName: Copy War & Restart Tomcat
-  #       steps:
-  #       - task: DownloadBuildArtifacts@1
-  #         displayName: Get the Artifacts
-  #         inputs:
-  #           buildType: 'current'
-  #           downloadType: 'single'
-  #           artifactName: 'MavenBuildArtifact'
-  #           itemPattern: 
-  #           downloadPath: '$(Pipeline.Workspace)'
-  #       - task: PowerShell@2
-  #         displayName: Find WAR File
-  #         inputs:
-  #           targetType: 'inline'
-  #           script: |
-  #             Write-Host "=== Searching for WAR files ==="
-  #             $artifactPath = "$(Pipeline.Workspace)/MavenBuildArtifact"
-  #             Write-Host "Artifact path: $artifactPath"
+  - stage: DeployToDev
+    displayName: DeploytoTomcat
+    dependsOn: Build
+    jobs:
+      - job: Deploy
+        displayName: Copy War & Restart Tomcat
+        steps:
+        - task: DownloadBuildArtifacts@1
+          displayName: Get the Artifacts
+          inputs:
+            buildType: 'current'
+            downloadType: 'single'
+            artifactName: 'MavenBuildArtifact'
+            itemPattern: 
+            downloadPath: '$(Pipeline.Workspace)'
+        - task: PowerShell@2
+          displayName: Find WAR File
+          inputs:
+            targetType: 'inline'
+            script: |
+              Write-Host "=== Searching for WAR files ==="
+              $artifactPath = "$(Pipeline.Workspace)/MavenBuildArtifact"
+              Write-Host "Artifact path: $artifactPath"
               
-  #             if (-not (Test-Path $artifactPath)) {
-  #               Write-Error "Artifact path does not exist: $artifactPath"
-  #               Write-Host "Available directories in Pipeline.Workspace:"
-  #               Get-ChildItem -Path "$(Pipeline.Workspace)" -Directory | Format-Table Name
-  #               exit 1
-  #             }
+              if (-not (Test-Path $artifactPath)) {
+                Write-Error "Artifact path does not exist: $artifactPath"
+                Write-Host "Available directories in Pipeline.Workspace:"
+                Get-ChildItem -Path "$(Pipeline.Workspace)" -Directory | Format-Table Name
+                exit 1
+              }
               
-  #             # List all files
-  #             Write-Host "All files in artifact:"
-  #             Get-ChildItem -Path $artifactPath -Recurse | Select-Object -First 20 | Format-Table Name, Extension, Length
+              # List all files
+              Write-Host "All files in artifact:"
+              Get-ChildItem -Path $artifactPath -Recurse | Select-Object -First 20 | Format-Table Name, Extension, Length
               
-  #             # Find WAR files
-  #             $warFiles = Get-ChildItem -Path $artifactPath -Filter "*.war" -Recurse
-  #             if ($warFiles.Count -eq 0) {
-  #               Write-Warning "No WAR files found in artifact!"
-  #               Write-Host "Looking for any JAR files instead..."
-  #               $jarFiles = Get-ChildItem -Path $artifactPath -Filter "*.jar" -Recurse
-  #               if ($jarFiles.Count -gt 0) {
-  #                 Write-Host "Found JAR files instead:"
-  #                 $jarFiles | ForEach-Object { Write-Host "  - $($_.FullName)" }
-  #               }
-  #             } else {
-  #               Write-Host "Found $($warFiles.Count) WAR file(s):"
-  #               $warFiles | ForEach-Object { 
-  #                 Write-Host "  - $($_.FullName)"
-  #               }
-  #             }
+              # Find WAR files
+              $warFiles = Get-ChildItem -Path $artifactPath -Filter "*.war" -Recurse
+              if ($warFiles.Count -eq 0) {
+                Write-Warning "No WAR files found in artifact!"
+                Write-Host "Looking for any JAR files instead..."
+                $jarFiles = Get-ChildItem -Path $artifactPath -Filter "*.jar" -Recurse
+                if ($jarFiles.Count -gt 0) {
+                  Write-Host "Found JAR files instead:"
+                  $jarFiles | ForEach-Object { Write-Host "  - $($_.FullName)" }
+                }
+              } else {
+                Write-Host "Found $($warFiles.Count) WAR file(s):"
+                $warFiles | ForEach-Object { 
+                  Write-Host "  - $($_.FullName)"
+                }
+              }
               
-  #       - task: CopyFilesOverSSH@0
-  #         displayName: Copy Files Over SSH
-  #         inputs:
-  #           sshEndpoint: 'sshSC'
-  #           sourceFolder: '$(Pipeline.Workspace)/MavenBuildArtifact'
-  #           contents: '**/*.war'
-  #           targetFolder: '/opt/tomcat/webapps/'
-  #           readyTimeout: '20000'
-  #       - task: SSH@0
-  #         displayName: Restart Tomcat
-  #         inputs:
-  #           sshEndpoint: 'sshSC'
-  #           runOptions: 'inline'
-  #           inline: |
-  #             sudo systemctl restart tomcat
-  #             echo "Tomcat restarted successfully."
-  #           readyTimeout: '20000'
+        - task: CopyFilesOverSSH@0
+          displayName: Copy Files Over SSH
+          inputs:
+            sshEndpoint: 'sshSC'
+            sourceFolder: '$(Pipeline.Workspace)/MavenBuildArtifact'
+            contents: '**/*.war'
+            targetFolder: '/opt/tomcat/webapps/'
+            readyTimeout: '20000'
+        - task: SSH@0
+          displayName: Restart Tomcat
+          inputs:
+            sshEndpoint: 'sshSC'
+            runOptions: 'inline'
+            inline: |
+              sudo systemctl restart tomcat
+              echo "Tomcat restarted successfully."
+            readyTimeout: '20000'
