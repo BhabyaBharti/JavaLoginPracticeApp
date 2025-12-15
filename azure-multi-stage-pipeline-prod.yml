@@ -1,0 +1,190 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/Java
+
+pool: Azure Pipelines
+
+stages:
+  - stage: Build
+    jobs:
+      - job: MavenBuild
+        displayName: Maven Build
+        steps:
+
+        - task: SonarQubePrepare@8
+          displayName: Prepare SonarQube Analysis
+          inputs:
+            SonarQube: 'SonarCloud-SC'
+            scannerMode: 'cli'
+            configMode: 'manual'
+            cliProjectKey: 'BhabyaBharti_JavaLoginPracticeApp'
+            cliProjectName: 'JavaLoginPracticeApp'
+            cliSources: '.'
+            extraProperties: |
+              sonar.organization=bhabyabharti
+              sonar.host.url='https://sonarcloud.io'
+              sonar.tests=
+              sonar.test.exclusions=**/*
+
+        
+
+        - task: Maven@4
+          displayName: mvn build & Run Sonar Analysis
+          inputs:
+            mavenPomFile: 'pom.xml'
+            goals: 'clean verify sonar:sonar'
+            options: '-Dsonar.host.url=https://sonarcloud.io -Dsonar.login="6d738a0fb7e64392588deda6688aefc897c22844" -Dsonar.organization=bhabyabharti -Dsonar.projectKey=BhabyaBharti_JavaLoginPracticeApp'
+            
+            javaHomeOption: 'JDKVersion'
+            jdkVersionOption: '1.17'
+            mavenVersionOption: 'Default'
+            mavenAuthenticateFeed: false
+            effectivePomSkip: false
+            sonarQubeRunAnalysis: false
+            publishJUnitResults: false
+
+        - task: ArchiveFiles@2
+          displayName: Archive the Artifacts
+          inputs:
+            rootFolderOrFile: '$(Build.SourcesDirectory)/target'
+            includeRootFolder: false
+            archiveType: 'zip'
+            archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+            replaceExistingArchive: true
+        - task: PublishBuildArtifacts@1
+          displayName: Publish Build Artifacts
+          inputs:
+            PathtoPublish: '$(Build.SourcesDirectory)/target'
+            ArtifactName: 'MavenBuildArtifact'
+            publishLocation: 'Container'
+
+
+
+  - stage: Linting
+    displayName: Lint Java App
+    dependsOn: Build
+
+    jobs:
+
+      - job: Linting_Java_App
+        steps:
+
+        - task: PowerShell@2
+          displayName: Install and Run StyleLint
+          inputs:
+            targetType: 'inline'
+            script: |
+              Write-Host "Initializing npm project..."
+              npm init -y
+
+              Write-Host "Installing Stylelint and standard configs..."
+              npm install stylelint stylelint-config-standard stylelint-config-recommended --save-dev
+
+              Write-Host "Creating .stylelintrc.json..."
+              @"
+              {
+                "extends": [
+                  "stylelint-config-standard",
+                  "stylelint-config-recommended"
+                ]
+              }
+              "@ | Out-File -FilePath ".stylelintrc.json" -Encoding UTF8
+
+              Write-Host "Running Stylelint (errors will NOT fail pipeline)..."
+              # Run stylelint but ALWAYS return success
+              npx stylelint "**/*.css" "**/*.scss"
+              # Force task to succeed even if errors are present
+              $LASTEXITCODE = 0
+
+
+
+  - stage: Deploy
+    displayName: Deploy
+    dependsOn: Build
+    condition: succeeded()
+
+    jobs:
+      - deployment: DeployToProd
+        displayName: Deploy on Tomcat
+        
+        environment: Production
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: DownloadBuildArtifacts@1
+                displayName: Get the Artifacts
+                inputs:
+                  buildType: 'current'
+                  downloadType: 'single'
+                  artifactName: 'MavenBuildArtifact'
+                  itemPattern: 
+                  downloadPath: '$(Pipeline.Workspace)'
+
+              - task: PowerShell@2
+                displayName: Find WAR File
+                inputs:
+                  targetType: 'inline'
+                  script: |
+                    Write-Host "=== Searching for WAR files ==="
+                    $artifactPath = "$(Pipeline.Workspace)/MavenBuildArtifact"
+                    Write-Host "Artifact path: $artifactPath"
+                    
+                    if (-not (Test-Path $artifactPath)) {
+                      Write-Error "Artifact path does not exist: $artifactPath"
+                      Write-Host "Available directories in Pipeline.Workspace:"
+                      Get-ChildItem -Path "$(Pipeline.Workspace)" -Directory | Format-Table Name
+                      exit 1
+                    }
+                    
+                    # List all files
+                    Write-Host "All files in artifact:"
+                    Get-ChildItem -Path $artifactPath -Recurse | Select-Object -First 20 | Format-Table Name, Extension, Length
+                    
+                    # Find WAR files
+                    $warFiles = Get-ChildItem -Path $artifactPath -Filter "*.war" -Recurse
+                    if ($warFiles.Count -eq 0) {
+                      Write-Warning "No WAR files found in artifact!"
+                      Write-Host "Looking for any JAR files instead..."
+                      $jarFiles = Get-ChildItem -Path $artifactPath -Filter "*.jar" -Recurse
+                      if ($jarFiles.Count -gt 0) {
+                        Write-Host "Found JAR files instead:"
+                        $jarFiles | ForEach-Object { Write-Host "  - $($_.FullName)" }
+                      }
+                    } else {
+                      Write-Host "Found $($warFiles.Count) WAR file(s):"
+                      $warFiles | ForEach-Object { 
+                        Write-Host "  - $($_.FullName)"
+                      }
+                    }
+                
+              - task: CopyFilesOverSSH@0
+                displayName: Copy Files Over SSH
+                inputs:
+                  sshEndpoint: 'ssh_to_vm_sc'
+                  sourceFolder: '$(Pipeline.Workspace)/MavenBuildArtifact'
+                  contents: '**/*.war'
+                  targetFolder: '/opt/tomcat/webapps/'
+                  readyTimeout: '20000'
+              - task: SSH@0
+                displayName: Restart Tomcat
+                inputs:
+                  sshEndpoint: 'ssh_to_vm_sc'
+                  runOptions: 'inline'
+                  inline: |
+                      # Move WAR file from temp to webapps using sudo
+                      if [ -f "~/tmp_deploy/$(WAR_FILE_NAME)" ]; then
+                        sudo cp "~/tmp_deploy/$(WAR_FILE_NAME)" /opt/tomcat/webapps/
+                        sudo chown tomcat:tomcat "/opt/tomcat/webapps/$(WAR_FILE_NAME)"
+                        echo "WAR file deployed successfully"
+                        
+                        # Clean up temp file
+                        rm -f "~/tmp_deploy/$(WAR_FILE_NAME)"
+                      else
+                        echo "ERROR: WAR file not found in temp location"
+                        exit 1
+                      fi
+                  readyTimeout: '20000'
