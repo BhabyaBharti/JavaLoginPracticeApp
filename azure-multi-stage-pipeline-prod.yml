@@ -96,7 +96,7 @@ stages:
     condition: succeeded()
     variables:
       - name: WAR_FILE_NAME
-        value: 'app.war'  # Change this to your actual WAR file name
+        value: 'app.war'
 
     jobs:
       - deployment: DeployToProd
@@ -150,11 +150,70 @@ stages:
                       Write-Host "Found $($warFiles.Count) WAR file(s):"
                       $warFiles | ForEach-Object { 
                         Write-Host "  - $($_.FullName)"
-                        # Set variable for WAR file name
                         Write-Host "##vso[task.setvariable variable=WAR_FILE_NAME]$($_.Name)"
                         Write-Host "##vso[task.setvariable variable=WAR_FULL_PATH]$($_.FullName)"
                       }
                     }
+
+              - task: SSH@0
+                displayName: Install Tomcat if needed
+                inputs:
+                  sshEndpoint: 'ssh_to_vm_sc'
+                  runOptions: 'inline'
+                  inline: |
+                    echo "=== Checking Tomcat Installation ==="
+                    
+                    # Check if Tomcat is already installed
+                    if [ -f "/opt/tomcat/bin/startup.sh" ]; then
+                      echo "Tomcat is already installed at /opt/tomcat"
+                    else
+                      echo "Installing Tomcat 9..."
+                      
+                      # Install Java if not present
+                      if ! command -v java &> /dev/null; then
+                        echo "Installing Java..."
+                        sudo apt-get update
+                        sudo apt-get install -y openjdk-11-jdk
+                      fi
+                      
+                      # Create tomcat user if not exists
+                      if ! id -u tomcat >/dev/null 2>&1; then
+                        sudo groupadd tomcat
+                        sudo useradd -s /bin/false -g tomcat -d /opt/tomcat tomcat
+                      fi
+                      
+                      # Create directory and download Tomcat
+                      sudo mkdir -p /opt/tomcat
+                      cd /tmp
+                      sudo wget https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.68/bin/apache-tomcat-9.0.68.tar.gz
+                      sudo tar -xzf apache-tomcat-9.0.68.tar.gz -C /opt/tomcat --strip-components=1
+                      
+                      # Set permissions
+                      sudo chown -R tomcat:tomcat /opt/tomcat
+                      sudo chmod +x /opt/tomcat/bin/*.sh
+                      
+                      echo "Tomcat installed successfully!"
+                    fi
+                    
+                    # Check if Tomcat is running
+                    if ps aux | grep -q "[c]atalina"; then
+                      echo "Tomcat is already running"
+                    else
+                      echo "Starting Tomcat..."
+                      sudo -u tomcat /opt/tomcat/bin/startup.sh
+                      sleep 5
+                    fi
+                    
+                    # Verify Tomcat is running
+                    echo "=== Verification ==="
+                    if ps aux | grep -q "[c]atalina"; then
+                      echo "✓ Tomcat is running"
+                      echo "Tomcat URL: http://$(curl -s ifconfig.me):8080"
+                    else
+                      echo "✗ Tomcat failed to start"
+                      echo "Check logs: /opt/tomcat/logs/catalina.out"
+                    fi
+                  readyTimeout: '20000'
 
               - task: CopyFilesOverSSH@0
                 displayName: Copy WAR to Temp Location
@@ -166,63 +225,82 @@ stages:
                   readyTimeout: '20000'
                   
               - task: SSH@0
-                displayName: Deploy WAR to Tomcat with Proper Permissions
+                displayName: Deploy WAR and Restart Tomcat
                 inputs:
                   sshEndpoint: 'ssh_to_vm_sc'
                   runOptions: 'inline'
                   inline: |
-                    # Check if tomcat user exists, create if not
-                      if ! id -u tomcat >/dev/null 2>&1; then
-                        echo "Creating tomcat user and group..."
-                        sudo groupadd tomcat
-                        sudo useradd -s /bin/false -g tomcat -d /opt/tomcat tomcat
-                      else
-                        echo "Tomcat user already exists"
-                      fi
-                      
-                      # Ensure webapps directory exists with correct permissions
-                      sudo mkdir -p /opt/tomcat/webapps
-                      sudo chown -R tomcat:tomcat /opt/tomcat/webapps
-                      sudo chmod 755 /opt/tomcat/webapps
-                      
-                      # Find and move WAR files from temp location
-                      echo "Looking for WAR files in ~/tmp_deploy/"
-                      if [ -d ~/tmp_deploy ]; then
-                        for war_file in ~/tmp_deploy/*.war; do
-                          if [ -f "$war_file" ]; then
-                            war_name=$(basename "$war_file")
-                            echo "Deploying $war_name to Tomcat..."
-                            
-                            # Remove old deployment if exists
-                            sudo rm -rf "/opt/tomcat/webapps/${war_name%.*}"
-                            sudo rm -f "/opt/tomcat/webapps/$war_name"
-                            
-                            # Copy WAR with tomcat ownership
-                            sudo cp "$war_file" /opt/tomcat/webapps/
-                            sudo chown tomcat:tomcat "/opt/tomcat/webapps/$war_name"
-                            sudo chmod 644 "/opt/tomcat/webapps/$war_name"
-                            
-                            echo "Successfully deployed $war_name"
-                          fi
-                        done
-                        
-                        # Clean up temp directory
-                        rm -rf ~/tmp_deploy
-                      else
-                        echo "ERROR: Temp directory ~/tmp_deploy not found!"
+                    echo "=== Deploying WAR File ==="
+                    
+                    # Ensure webapps directory exists
+                    sudo mkdir -p /opt/tomcat/webapps
+                    sudo chown -R tomcat:tomcat /opt/tomcat/webapps
+                    sudo chmod 755 /opt/tomcat/webapps
+                    
+                    # Check for WAR files in temp location
+                    if [ -d ~/tmp_deploy ]; then
+                      WAR_COUNT=$(ls ~/tmp_deploy/*.war 2>/dev/null | wc -l)
+                      if [ $WAR_COUNT -eq 0 ]; then
+                        echo "No WAR files found in ~/tmp_deploy/"
                         exit 1
                       fi
                       
-                      # Check if Tomcat is installed as a service
-                      if systemctl list-unit-files | grep -q tomcat; then
-                        echo "Restarting Tomcat service..."
-                        sudo systemctl restart tomcat
-                        echo "Tomcat status:"
-                        sudo systemctl status tomcat --no-pager
-                      else
-                        echo "Tomcat service not found. WAR will be deployed when Tomcat starts."
-                        echo "You may need to start Tomcat manually."
+                      echo "Found $WAR_COUNT WAR file(s)"
+                      
+                      # Stop Tomcat before deployment
+                      echo "Stopping Tomcat for deployment..."
+                      if [ -f "/opt/tomcat/bin/shutdown.sh" ]; then
+                        sudo -u tomcat /opt/tomcat/bin/shutdown.sh
+                        sleep 3
                       fi
                       
-                      echo "Deployment completed successfully!"
-                    readyTimeout: '20000'
+                      # Deploy each WAR file
+                      for war_file in ~/tmp_deploy/*.war; do
+                        if [ -f "$war_file" ]; then
+                          war_name=$(basename "$war_file")
+                          app_name="${war_name%.*}"
+                          
+                          echo "Deploying: $war_name"
+                          
+                          # Remove old deployment
+                          sudo rm -rf "/opt/tomcat/webapps/$app_name"
+                          sudo rm -f "/opt/tomcat/webapps/$war_name"
+                          
+                          # Copy new WAR
+                          sudo cp "$war_file" /opt/tomcat/webapps/
+                          sudo chown tomcat:tomcat "/opt/tomcat/webapps/$war_name"
+                          sudo chmod 644 "/opt/tomcat/webapps/$war_name"
+                          
+                          echo "✓ Deployed: $war_name"
+                        fi
+                      done
+                      
+                      # Clean up temp directory
+                      rm -rf ~/tmp_deploy
+                      
+                      # Start Tomcat
+                      echo "Starting Tomcat..."
+                      sudo -u tomcat /opt/tomcat/bin/startup.sh
+                      sleep 8
+                      
+                      # Verify deployment
+                      echo "=== Deployment Verification ==="
+                      echo "Deployed applications:"
+                      ls -la /opt/tomcat/webapps/
+                      
+                      # Check Tomcat status
+                      if ps aux | grep -q "[c]atalina"; then
+                        echo "✓ Tomcat is running successfully"
+                        echo "✓ Application deployed"
+                        echo "Access your app at: http://$(curl -s ifconfig.me):8080/JavaLoginShowcase-1.0.0/"
+                      else
+                        echo "✗ Tomcat failed to start after deployment"
+                        echo "Check logs: tail -50 /opt/tomcat/logs/catalina.out"
+                      fi
+                    else
+                      echo "ERROR: Temp directory ~/tmp_deploy not found!"
+                      exit 1
+                    fi
+                    
+                    echo "=== Deployment Complete ==="
+                  readyTimeout: '20000'
