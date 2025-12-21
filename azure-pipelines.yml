@@ -118,83 +118,56 @@ stages:
             buildType: 'current'
             downloadType: 'single'
             artifactName: 'MavenBuildArtifact'
-            itemPattern: 
             downloadPath: '$(Pipeline.Workspace)'
+            
         - task: PowerShell@2
-          displayName: Find WAR File
+          displayName: Find and Verify WAR File
           inputs:
             targetType: 'inline'
             script: |
-              Write-Host "=== Searching for WAR files ==="
               $artifactPath = "$(Pipeline.Workspace)/MavenBuildArtifact"
               Write-Host "Artifact path: $artifactPath"
               
-              if (-not (Test-Path $artifactPath)) {
-                Write-Error "Artifact path does not exist: $artifactPath"
-                Write-Host "Available directories in Pipeline.Workspace:"
-                Get-ChildItem -Path "$(Pipeline.Workspace)" -Directory | Format-Table Name
+              $warFile = Get-ChildItem -Path $artifactPath -Filter "*.war" -Recurse | Select-Object -First 1
+              if ($warFile) {
+                Write-Host "Found WAR file: $($warFile.FullName)"
+                Write-Host "##vso[task.setvariable variable=WarFileName]$($warFile.Name)"
+              } else {
+                Write-Error "No WAR file found!"
                 exit 1
               }
               
-              # List all files
-              Write-Host "All files in artifact:"
-              Get-ChildItem -Path $artifactPath -Recurse | Select-Object -First 20 | Format-Table Name, Extension, Length
-              
-              # Find WAR files
-              $warFiles = Get-ChildItem -Path $artifactPath -Filter "*.war" -Recurse
-              if ($warFiles.Count -eq 0) {
-                Write-Warning "No WAR files found in artifact!"
-                Write-Host "Looking for any JAR files instead..."
-                $jarFiles = Get-ChildItem -Path $artifactPath -Filter "*.jar" -Recurse
-                if ($jarFiles.Count -gt 0) {
-                  Write-Host "Found JAR files instead:"
-                  $jarFiles | ForEach-Object { Write-Host "  - $($_.FullName)" }
-                }
-              } else {
-                Write-Host "Found $($warFiles.Count) WAR file(s):"
-                $warFiles | ForEach-Object { 
-                  Write-Host "  - $($_.FullName)"
-                }
-              }
-        
-        - task: SSH@0
-          displayName: Set Up Tomcat Directory Permissions
-          inputs:
-            sshEndpoint: 'sshSC'
-            runOptions: 'inline'
-            inline: |
-              # Check current permissions
-              ls -la /opt/tomcat/
-              
-              # Create webapps directory if it doesn't exist
-              sudo mkdir -p /opt/tomcat/webapps
-              
-              # Change ownership to tomcat user (or your SSH user)
-              sudo chown -R tomcat:tomcat /opt/tomcat/webapps
-              
-              # OR if your SSH user is different, add them to tomcat group
-              # sudo usermod -a -G tomcat $(whoami)
-              
-              # Set appropriate permissions
-              sudo chmod -R 775 /opt/tomcat/webapps
-              
-              # Verify permissions
-              ls -la /opt/tomcat/webapps
-              
         - task: CopyFilesOverSSH@0
-          displayName: Copy Files Over SSH
+          displayName: Copy WAR to Remote Server
           inputs:
             sshEndpoint: 'sshSC'
             sourceFolder: '$(Pipeline.Workspace)/MavenBuildArtifact'
             contents: '**/*.war'
-            targetFolder: '/opt/tomcat/webapps/'
+            targetFolder: '/tmp/'
             readyTimeout: '20000'
+            
         - task: SSH@0
-          displayName: Restart Tomcat
+          displayName: Deploy WAR to Tomcat
           inputs:
             sshEndpoint: 'sshSC'
             runOptions: 'inline'
             inline: |
-              sudo systemctl restart tomcat
-              echo "Tomcat restarted successfully."
-            readyTimeout: '20000'
+              # Stop Tomcat before deploying
+              sudo systemctl stop tomcat
+              
+              # Remove old deployment
+              sudo rm -f /opt/tomcat/webapps/JavaLoginShowcase-1.0.0.war
+              sudo rm -rf /opt/tomcat/webapps/JavaLoginShowcase-1.0.0
+              
+              # Move new WAR file
+              sudo mv /tmp/JavaLoginShowcase-1.0.0.war /opt/tomcat/webapps/
+              sudo chown tomcat:tomcat /opt/tomcat/webapps/JavaLoginShowcase-1.0.0.war
+              
+              # Start Tomcat
+              sudo systemctl start tomcat
+              
+              echo "Deployment completed successfully!"
+              sleep 3
+              echo "Tomcat status:"
+              sudo systemctl status tomcat --no-pager | head -10
+            readyTimeout: '30000'
