@@ -171,49 +171,58 @@ stages:
                   sshEndpoint: 'ssh_to_vm_sc'
                   runOptions: 'inline'
                   inline: |
-                    # Ensure webapps directory exists with correct permissions
-                    sudo mkdir -p /opt/tomcat/webapps
-                    sudo chown -R tomcat:tomcat /opt/tomcat/webapps
-                    sudo chmod 755 /opt/tomcat/webapps
-                    
-                    # Find and move WAR files from temp location
-                    echo "Looking for WAR files in ~/tmp_deploy/"
-                    if [ -d ~/tmp_deploy ]; then
-                      for war_file in ~/tmp_deploy/*.war; do
-                        if [ -f "$war_file" ]; then
-                          war_name=$(basename "$war_file")
-                          echo "Deploying $war_name to Tomcat..."
-                          
-                          # Stop Tomcat if it's running (optional)
-                          # sudo systemctl stop tomcat
-                          
-                          # Remove old deployment if exists
-                          sudo rm -rf "/opt/tomcat/webapps/${war_name%.*}"
-                          sudo rm -f "/opt/tomcat/webapps/$war_name"
-                          
-                          # Copy WAR with tomcat ownership
-                          sudo cp "$war_file" /opt/tomcat/webapps/
-                          sudo chown tomcat:tomcat "/opt/tomcat/webapps/$war_name"
-                          sudo chmod 644 "/opt/tomcat/webapps/$war_name"
-                          
-                          echo "Successfully deployed $war_name"
-                        fi
-                      done
+                    # Check if tomcat user exists, create if not
+                      if ! id -u tomcat >/dev/null 2>&1; then
+                        echo "Creating tomcat user and group..."
+                        sudo groupadd tomcat
+                        sudo useradd -s /bin/false -g tomcat -d /opt/tomcat tomcat
+                      else
+                        echo "Tomcat user already exists"
+                      fi
                       
-                      # Clean up temp directory
-                      rm -rf ~/tmp_deploy
-                    else
-                      echo "ERROR: Temp directory ~/tmp_deploy not found!"
-                      exit 1
-                    fi
-                    
-                    # Restart Tomcat to deploy new WAR
-                    echo "Restarting Tomcat service..."
-                    sudo systemctl restart tomcat
-                    
-                    # Check Tomcat status
-                    echo "Tomcat status:"
-                    sudo systemctl status tomcat --no-pager
-                    
-                    echo "Deployment completed successfully!"
-                  readyTimeout: '20000'
+                      # Ensure webapps directory exists with correct permissions
+                      sudo mkdir -p /opt/tomcat/webapps
+                      sudo chown -R tomcat:tomcat /opt/tomcat/webapps
+                      sudo chmod 755 /opt/tomcat/webapps
+                      
+                      # Find and move WAR files from temp location
+                      echo "Looking for WAR files in ~/tmp_deploy/"
+                      if [ -d ~/tmp_deploy ]; then
+                        for war_file in ~/tmp_deploy/*.war; do
+                          if [ -f "$war_file" ]; then
+                            war_name=$(basename "$war_file")
+                            echo "Deploying $war_name to Tomcat..."
+                            
+                            # Remove old deployment if exists
+                            sudo rm -rf "/opt/tomcat/webapps/${war_name%.*}"
+                            sudo rm -f "/opt/tomcat/webapps/$war_name"
+                            
+                            # Copy WAR with tomcat ownership
+                            sudo cp "$war_file" /opt/tomcat/webapps/
+                            sudo chown tomcat:tomcat "/opt/tomcat/webapps/$war_name"
+                            sudo chmod 644 "/opt/tomcat/webapps/$war_name"
+                            
+                            echo "Successfully deployed $war_name"
+                          fi
+                        done
+                        
+                        # Clean up temp directory
+                        rm -rf ~/tmp_deploy
+                      else
+                        echo "ERROR: Temp directory ~/tmp_deploy not found!"
+                        exit 1
+                      fi
+                      
+                      # Check if Tomcat is installed as a service
+                      if systemctl list-unit-files | grep -q tomcat; then
+                        echo "Restarting Tomcat service..."
+                        sudo systemctl restart tomcat
+                        echo "Tomcat status:"
+                        sudo systemctl status tomcat --no-pager
+                      else
+                        echo "Tomcat service not found. WAR will be deployed when Tomcat starts."
+                        echo "You may need to start Tomcat manually."
+                      fi
+                      
+                      echo "Deployment completed successfully!"
+                    readyTimeout: '20000'
