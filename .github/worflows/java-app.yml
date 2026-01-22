@@ -1,1 +1,28 @@
+name: Java App CICD
+on:
+  workflow_dispatch:
+    inputs:
+      lginToVM:
+        description: "Do you want to login to VM?"
+        required: true
+        default: "yes"
+        type: choice
+        options:
+        - yes
+        - no
+jobs:
+  Access_VM:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_SP_CREDENTIALS }}
 
+      - name: Run Command on VM
+        run: |
+          az vm run-command invoke \
+            --resource-group rg-autom \
+            --name ghavm \
+            --command-id RunShellScript \
+            --scripts "sudo apt-get update && uptime"
