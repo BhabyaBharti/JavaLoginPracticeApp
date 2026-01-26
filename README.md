@@ -76,3 +76,88 @@ This project is licensed under the Apache License - see the [LICENSE](LICENSE) f
 - **🧩**: Indicates Git.
 - **🤝**: Encourages contributions.
 - **📜**: Represents licensing.
+
+
+
+
+# Java Application CI/CD Pipeline to Tomcat (Azure DevOps)
+
+---
+
+## 🚀 Purpose of This Repository
+
+This repository demonstrates a **CI/CD pipeline for a Java (Maven) application**, with a focus on:
+
+- Build and quality analysis
+- Artifact packaging
+- Automated deployment to a **Tomcat server running on a Virtual Machine**
+
+> ⚠️ The application itself is intentionally simple.  
+> 🎯 The primary focus is on **CI/CD pipeline design and deployment automation**.
+
+---
+
+## 🏗️ Technology Stack
+
+- **Application:** Java (Maven, WAR packaging)
+- **CI/CD:** Azure DevOps Pipelines
+- **Code Quality:** SonarQube / SonarCloud
+- **Deployment Target:** Tomcat on Linux VM (SSH-based deployment)
+
+---
+
+## 🔄 CI/CD Pipeline Overview
+
+The pipeline follows a multi-stage structure:
+
+### 1️⃣ Build & Quality Analysis
+- Maven build (`clean verify`)
+- SonarQube static code analysis
+- Artifact packaging (WAR file)
+
+### 2️⃣ Linting
+- StyleLint for frontend/static assets (non-blocking)
+
+### 3️⃣ Deployment
+- Download build artifacts
+- Install Tomcat (if not present)
+- Deploy WAR file to Tomcat webapps directory
+- Restart Tomcat service
+- Verify application availability
+
+---
+
+## 🧩 Pipeline Highlights
+
+✅ Multi-stage Azure DevOps pipeline  
+✅ Artifact-based deployment strategy  
+✅ VM deployment using SSH tasks  
+✅ Separation of build and deploy concerns  
+✅ Realistic VM-based delivery flow  
+
+This mirrors how many **legacy and hybrid enterprise systems** are still deployed today.
+
+---
+
+## 🔐 Security Notes
+
+- Secrets and tokens should be stored in **Azure DevOps secure variables or service connections**
+- No credentials should be hardcoded in pipeline definitions
+
+---
+
+## 🎯 Why This Project Exists
+
+This repository complements my other work focused on:
+- Enterprise CI/CD pipelines
+- Infrastructure as Code
+- Cloud platform engineering
+
+It represents **VM-based application delivery**, which remains relevant in many real-world environments.
+
+---
+
+## 👤 Author
+
+**Bhabya Bharti**  
+DevOps Engineer | CI/CD | Azure | DevSecOps
